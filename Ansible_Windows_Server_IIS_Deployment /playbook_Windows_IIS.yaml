@@ -1,0 +1,60 @@
+---
+- name: Install and Configure IIS on Windows Server
+  hosts: windows
+  gather_facts: yes
+
+  vars_files:
+    - group_vars/windows.yml
+
+  tasks:
+    - name: Install IIS Web Server
+      ansible.windows.win_feature:
+        name: "{{ iis_feature_name }}"
+        state: present
+        include_management_tools: yes
+
+    - name: Install IIS Management Console
+      ansible.windows.win_feature:
+        name: "{{ iis_management_feature_name }}"
+        state: present
+
+    - name: Create IIS web root directory
+      ansible.windows.win_file:
+        path: "{{ iis_root_path }}"
+        state: directory
+
+    - name: Copy custom IIS homepage
+      ansible.windows.win_copy:
+        src: files/index.html
+        dest: "{{ iis_root_path }}\\index.html"
+
+    - name: Start IIS Service
+      ansible.windows.win_service:
+        name: "{{ iis_service_name }}"
+        state: started
+
+    - name: Set IIS Service startup type to automatic
+      ansible.windows.win_service:
+        name: "{{ iis_service_name }}"
+        start_mode: auto
+
+    - name: Open HTTP Firewall Port
+      community.windows.win_firewall_rule:
+        name: "{{ firewall_rule_name }}"
+        localport: "{{ http_port }}"
+        action: allow
+        direction: in
+        protocol: TCP
+        state: present
+        enabled: yes
+
+    - name: Verify IIS website locally
+      ansible.windows.win_uri:
+        url: http://localhost
+        method: GET
+        return_content: yes
+      register: iis_test
+
+    - name: Display IIS verification result
+      ansible.builtin.debug:
+        msg: "IIS responded successfully. Status code: {{ iis_test.status_code }}"
