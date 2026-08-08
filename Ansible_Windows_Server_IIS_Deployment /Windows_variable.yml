@@ -1,0 +1,9 @@
+---
+iis_root_path: 'C:\inetpub\wwwroot'
+iis_service_name: W3SVC
+iis_feature_name: Web-Server
+iis_management_feature_name: Web-Mgmt-Console
+firewall_rule_name: Ansible Allow HTTP 80
+http_port: 80
+website_title: Windows IIS Deployment using Ansible
+environment_name: Lab
