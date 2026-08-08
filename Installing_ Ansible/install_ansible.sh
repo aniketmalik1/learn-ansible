@@ -1,15 +1,17 @@
 #!/bin/bash
-2
-# Basic Ansible installation script for Ubuntu/Debian
-3
+
+# Ansible Installation Script
+# Tested on Ubuntu/Debian
+
 set -e
-4
- 
-5
+
+echo "Updating package repository..."
 sudo apt update
-6
+
+echo "Installing Ansible..."
 sudo apt install ansible -y
-7
- 
-8
+
+echo "Checking Ansible Version..."
 ansible --version
+
+echo "Ansible installation completed successfully."
