@@ -1,0 +1,79 @@
+name: Windows IIS Ansible Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Deployment environment name
+        required: true
+        default: lab
+      run_deployment:
+        description: Run actual deployment after validation
+        required: true
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+
+jobs:
+  validate-and-deploy:
+    name: Validate and Deploy IIS with Ansible
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ansible and WinRM dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible pywinrm requests-ntlm
+
+      - name: Install required Ansible collections
+        run: |
+          ansible-galaxy collection install ansible.windows
+          ansible-galaxy collection install community.windows
+
+      - name: Create runtime inventory from GitHub secrets
+        run: |
+          cat > inventory.ini <<INVENTORY
+          [windows]
+          winserver01 ansible_host=${{ secrets.WIN_HOST }}
+
+          [windows:vars]
+          ansible_user=${{ secrets.WIN_USER }}
+          ansible_password=${{ secrets.WIN_PASSWORD }}
+          ansible_connection=winrm
+          ansible_port=5985
+          ansible_winrm_transport=basic
+          ansible_winrm_server_cert_validation=ignore
+          INVENTORY
+
+      - name: Validate Ansible inventory
+        run: ansible-inventory -i inventory.ini --list
+
+      - name: Check Ansible playbook syntax
+        run: ansible-playbook -i inventory.ini playbook.yml --syntax-check
+
+      - name: Test Windows WinRM connectivity
+        run: ansible windows -i inventory.ini -m win_ping
+
+      - name: Dry run IIS deployment
+        run: ansible-playbook -i inventory.ini playbook.yml --check
+
+      - name: Deploy IIS to Windows Server
+        if: ${{ github.event.inputs.run_deployment == 'true' }}
+        run: ansible-playbook -i inventory.ini playbook.yml
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "Pipeline completed."
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Deployment requested: ${{ github.event.inputs.run_deployment }}"
